@@ -1,0 +1,29 @@
+name: Hobby scheduler
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API_URL: ${{ secrets.CRM_API_URL }}
+      AGENT_URL: ${{ secrets.CRM_AGENT_URL }}
+      CRON_SECRET: ${{ secrets.CRM_CRON_SECRET }}
+      AGENT_BRIDGE_SECRET: ${{ secrets.CRM_AGENT_BRIDGE_SECRET }}
+    steps:
+      - name: Sync mailboxes
+        if: env.API_URL != '' && env.CRON_SECRET != ''
+        run: |
+          curl -fsS -X POST "$API_URL/internal/sync/mailboxes" \
+            -H "Authorization: Bearer $CRON_SECRET" --max-time 120
+      - name: Dispatch agent tasks
+        if: env.AGENT_URL != '' && env.AGENT_BRIDGE_SECRET != ''
+        run: |
+          curl -fsS -X POST "$AGENT_URL/internal/crm/dispatch" \
+            -H "Authorization: Bearer $AGENT_BRIDGE_SECRET" --max-time 60
